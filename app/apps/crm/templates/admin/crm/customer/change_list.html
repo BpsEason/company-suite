@@ -1,0 +1,9 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+    {# 1. 注入自定義卡片與圖表組件 #}
+    {% include "admin/crm/customer/stats_cards.html" %}
+    
+    {# 2. 呼叫原本的列表內容 #}
+    {{ block.super }}
+{% endblock %}

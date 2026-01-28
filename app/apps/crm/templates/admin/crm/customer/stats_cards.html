@@ -1,0 +1,124 @@
+{% load i18n %}
+
+<div class="animate-fade-in">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        {% if custom_dashboard_cards %}
+        {% for card in custom_dashboard_cards %}
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-600 dark:text-gray-300 mb-1">
+                        {{ card.title }}
+                    </p>
+                    <h3 class="text-3xl font-black text-gray-900 dark:text-white tabular-nums">
+                        {{ card.value }}
+                    </h3>
+                </div>
+                <div class="bg-indigo-500/10 p-3 rounded-xl text-indigo-600 dark:text-indigo-400">
+                    <span class="material-symbols-outlined text-2xl">{{ card.icon }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <div class="flex items-center justify-between mb-4">
+            <h4 class="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase italic">
+                Performance Trend
+            </h4>
+        </div>
+        <div style="height: 120px; min-height: 120px; width: 100%;">
+            <canvas id="crmMiniChart"></canvas>
+        </div>
+    </div>
+</div>
+
+{# 後端注入的 JSON 資料 #}
+{{ chart_labels|json_script:"chart-labels" }}
+{{ chart_data|json_script:"chart-values" }}
+
+<style>
+    /* 1. 內容區動畫 */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.4s ease-out forwards;
+    }
+
+    /* 💡 2. 核心修正：解決左側選單「選中狀態」文字看不見的問題 */
+
+    /* 深色模式修正：讓選中的「客戶資料庫」文字變白 */
+    .dark aside nav a[class*="bg-primary-"],
+    .dark aside nav a[class*="bg-gray-700"],
+    .dark aside nav a.active span {
+        color: #ffffff !important;
+        opacity: 1 !important;
+    }
+
+    /* 淺色模式修正：讓選中的文字變回深黑色 */
+    aside nav a[class*="bg-gray-100"] span,
+    aside nav a[class*="bg-primary-"] span {
+        color: #111827 !important;
+        font-weight: 700 !important;
+    }
+
+    /* 強制確保側邊欄文字不受重置影響 */
+    aside nav a span {
+        transition: color 0.2s;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    (function () {
+        document.addEventListener("DOMContentLoaded", function () {
+            const labels = JSON.parse(document.getElementById('chart-labels').textContent);
+            const data = JSON.parse(document.getElementById('chart-values').textContent);
+            const ctx = document.getElementById('crmMiniChart').getContext('2d');
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, 100);
+            gradient.addColorStop(0, 'rgba(99, 102, 241, 0.2)');
+            gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        borderColor: '#6366f1',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#6366f1',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        fill: true,
+                        backgroundColor: gradient,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { display: false, beginAtZero: true }
+                    }
+                }
+            });
+        });
+    })();
+</script>

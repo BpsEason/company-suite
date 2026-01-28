@@ -1,0 +1,64 @@
+name: Django CI (Nexus ERP)
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # 💡 定義資料庫服務
+    services:
+      db:
+        image: postgres:16 # 升級到與 Django 6.0 更契合的版本
+        env:
+          POSTGRES_DB: nexus_db
+          POSTGRES_USER: nexus_user
+          POSTGRES_PASSWORD: nexus_password
+        ports:
+          - 5432:5432
+        # 確保資料庫完全啟動後才開始 Step
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4 # 升級到 v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 💡 專業推薦：使用官方 uv-action，處理速度最快且支援快取
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -r requirements.txt
+          # 如果你有額外的測試套件 (如 pytest-django)
+          # uv pip install --system pytest
+
+      - name: Run Tests
+        env:
+          # 💡 核心修正：將資料庫連線資訊透過環境變數注入
+          DATABASE_URL: postgres://nexus_user:nexus_password@localhost:5432/nexus_db
+          REDIS_URL: redis://localhost:6379/1
+          DEBUG: "True"
+          SECRET_KEY: "ci-test-key-for-nexus-erp"
+        run: |
+          # 根據你的目錄結構，manage.py 應該在根目錄
+          python manage.py test apps/

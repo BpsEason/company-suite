@@ -1,0 +1,131 @@
+{% extends "unfold/layouts/base.html" %} {# 💡 改為 base 以保留側邊欄選單 #}
+
+{% block content %}
+<div class="p-6">
+    <div class="flex items-center justify-between mb-8">
+        <h2 class="text-2xl font-black text-gray-800 dark:text-white tracking-tight">
+            {{ title|default:"CRM 數據戰情室" }}
+        </h2>
+        <span class="text-xs font-medium bg-green-100 text-green-600 px-3 py-1 rounded-full animate-pulse">
+            ● 即時數據已連線
+        </span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {% for card in cards %}
+        <div
+            class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all hover:shadow-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-400 mb-1">{{ card.title }}</p>
+                    <h3 class="text-3xl font-black text-gray-900 dark:text-white tabular-nums">{{ card.value }}</h3>
+                </div>
+                <div
+                    class="w-12 h-12 bg-primary-50 dark:bg-primary-900/30 rounded-xl flex items-center justify-center text-primary-600">
+                    <span class="material-symbols-outlined text-2xl">{{ card.icon }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="grid grid-cols-1 gap-6">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <div class="flex items-center justify-between mb-6">
+                <h4 class="font-bold text-gray-700 dark:text-gray-200">客戶開發階段分佈</h4>
+                <div class="flex gap-2">
+                    <div class="flex items-center gap-1 text-xs text-gray-400">
+                        <span class="w-3 h-3 bg-primary-500 rounded-full"></span> 客戶數
+                    </div>
+                </div>
+            </div>
+
+            <div class="relative" style="height: 300px;">
+                <div id="chartLoader"
+                    class="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-800/50 z-10">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                </div>
+                <canvas id="crmChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const loader = document.getElementById('chartLoader');
+
+        // 💡 呼叫剛才寫好的 API
+        fetch('/admin/crm/api/stats/')
+            .then(response => {
+                if (!response.ok) throw new Error('網路回應不正常');
+                return response.json();
+            })
+            .then(data => {
+                loader.style.display = 'none'; // 隱藏載入動畫
+
+                const ctx = document.getElementById('crmChart').getContext('2d');
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: '客戶階段數量',
+                            data: data.counts,
+                            backgroundColor: 'rgba(79, 70, 229, 0.8)', // Unfold 經典紫色系
+                            hoverBackgroundColor: 'rgba(79, 70, 229, 1)',
+                            borderRadius: 12,
+                            borderSkipped: false,
+                            barThickness: 40,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                padding: 12,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: (context) => ` 客戶數: ${context.raw} 名`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { weight: 'bold' } }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                border: { display: false },
+                                ticks: { stepSize: 1 }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loader.innerHTML = `<p class="text-red-500 text-sm">數據載入失敗，請刷新頁面</p>`;
+            });
+    });
+</script>
+
+<style>
+    /* 微調 Unfold 表格容器間距 */
+    .unfold-table-container {
+        margin-top: 0 !important;
+    }
+
+    /* 讓數字字體更現代 */
+    .tabular-nums {
+        font-variant-numeric: tabular-nums;
+    }
+</style>
+{% endblock %}

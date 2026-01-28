@@ -1,0 +1,14 @@
+django>=5.0
+django-environ
+django-redis
+django-filter
+psycopg2-binary
+djangorestframework
+django-cors-headers    # 新增：處理跨域請求
+django-unfold          # 新增：超美觀 Admin 主題
+django-import-export   # 新增：Excel 匯入匯出
+gunicorn
+pandas
+matplotlib
+django-crispy-forms
+crispy-bootstrap5
