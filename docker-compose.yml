@@ -1,0 +1,87 @@
+services:
+  web:
+    build: 
+      context: ./app
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_STEP_LOG_MAX_SIZE=10485760
+    container_name: company-suite-web
+    entrypoint: /app/entrypoint.sh 
+    volumes:
+      - ./app:/app
+      - ./logs:/app/logs 
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    env_file: .env
+    environment:
+      - SEED_DATA=True
+      - DEBUG=True 
+      - DATABASE_URL=postgres://user:password@db:5432/company_db
+      - REDIS_URL=redis://redis:6379/0
+      - DOCKER_BUILDKIT=1 
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - backend_nw
+      - frontend_nw
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  db:
+    image: postgres:15-alpine
+    container_name: company-suite-db
+    restart: always
+    volumes:
+      # 💡 建議路徑統一管理
+      - ./data/db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: company_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d company_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend_nw
+
+  redis:
+    image: redis:7-alpine
+    container_name: company-suite-redis
+    restart: always
+    volumes:
+      - ./data/redis:/data
+    networks:
+      - backend_nw
+
+  nginx:
+    image: nginx:alpine
+    container_name: company-suite-proxy
+    ports:
+      - "8888:80"
+    volumes:
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # 💡 確保 Nginx 讀取的路徑與 Django collectstatic 的路徑完全對應
+      - static_volume:/usr/share/nginx/html/static:ro
+      - media_volume:/usr/share/nginx/html/media:ro
+    depends_on:
+      - web
+    networks:
+      - frontend_nw
+
+networks:
+  frontend_nw:
+  backend_nw:
+    # 💡 在生產環境開啟 internal 能增加安全性，但開發時若需外部連接 db，可改為 false
+    internal: true 
+
+volumes:
+  static_volume:
+  media_volume:
